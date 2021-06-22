@@ -45,9 +45,11 @@ export class AuthService {
           this.isAuth$.next(true);
           resolve();
         },
-        (error) => {
+        (error) => { 
+          console.log(error);
           reject(error);
         }
+      
       );
     });
   }
