@@ -2,30 +2,49 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const path = require('path');
+const fs = require('fs');
+const morgan = require('morgan');
+const helmet = require('helmet');
+require('dotenv').config();
+const session = require('express-session');
 
-const stuffRoutes = require('./routes/sauce');
+const sauceRoutes = require('./routes/sauce');
 const userRoutes = require('./routes/user');
 
-const app = express();
-
+/* Connexion à la base de données */
 mongoose.connect('mongodb+srv://gaelle:MongoDB2021@cluster0.mgp5j.mongodb.net/myFirstDatabase?retryWrites=true&w=majority',
   { useNewUrlParser: true,
     useUnifiedTopology: true })
   .then(() => console.log('Connexion à MongoDB réussie !'))
   .catch(() => console.log('Connexion à MongoDB échouée !'));
 
+/* Lancement Express */
+const app = express();
+
+/* Configuration CORS */
 app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Origin', process.env.AUTHORIZED_ORIGIN);
     res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content, Accept, Content-Type, Authorization');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Credentials', true);
     next();
-  });
-
+});
+/* Parse le body des requetes en json */
 app.use(bodyParser.json());
 
-app.use('/images', express.static(path.join(__dirname, 'images')));
+/* Log toutes les requêtes passées au serveur (sécurité) */
+const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' });
+app.use(morgan('combined', { stream: accessLogStream }));
 
-app.use('/api/stuff', stuffRoutes);
+/* Sécurise les headers*/
+app.use(helmet());
+
+/* Utilisation de la session pour stocker de manière persistante le JWT coté front */
+app.use(session({ secret: process.env.COOKIE_KEY, cookie: { maxAge: 900000 }})) 
+
+/* Routes */
+app.use('/images', express.static(path.join(__dirname, 'images')));
+app.use('/api/sauces', sauceRoutes);
 app.use('/api/auth', userRoutes);
 
 module.exports = app;
